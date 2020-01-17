@@ -149,7 +149,6 @@ function search() {
     }
 
     initPlacesListV2();
-    showMarkers();
     let location = plotCentralLocation();
     setStatus(Status.CENTRALPOINT_CALCULATED);
     getCentralLocationOutput(location);
@@ -158,6 +157,7 @@ function search() {
     nearbySearch(location, radius, filters);
     map.setCenter(new google.maps.LatLng(location[0], location[1]));
     map.setZoom(12);
+    showMarkers();
 }
 
 function getPoiFiltersV2() {
