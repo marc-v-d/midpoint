@@ -45,14 +45,14 @@ function initControls() {
     $('#pastein').on('paste', function(event) {
         $('#pastein').on('input', function() {
             generateInputMultipleSelectV2();
-            plotInputAddressesV2();
+            plotInputAddressesV2(false);
             $('#pastein').off('input');
         })
     });
 }
 
 function initMap() {
-    let status = geocoding(defaultMapLocation, resetMap);
+    let status = geocoding(defaultMapLocation, false, 1, resetMap);
 }
 
 /**
@@ -60,7 +60,7 @@ function initMap() {
  * @param {string} address The address to get the coordinates from.  
  * @param {function} location The given function gets executed after executing the request and getting the response back from Google Maps.
  */
-function geocoding(address, location) {
+function geocoding(address, redirect, total, location) {
     setStatus(Status.ANALYZE);
     let url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&key=${key}`;
     fetch(url)
@@ -68,7 +68,7 @@ function geocoding(address, location) {
     .then(data => {
         if(data.status == "OK") {
             //console.log(data.results[0].geometry.location);
-            location(data.results[0].geometry.location);
+            location(data.results[0].geometry.location, redirect, total);
             return ResponseStatus.OK;
         } else {
             console.warn('Error executing geocoding with Google Maps API.');
@@ -97,7 +97,7 @@ function ReverseGeocoding(latitude, longtitude, output) {
 /**
  * This function brings the map back to the default values
  */
-function resetMap(location) {
+function resetMap(location, total) {
     let options = {
         zoom: zoom_default,
         center: location,
@@ -110,14 +110,23 @@ function resetMap(location) {
 /**
  * Plot the addresses from the input.
  */
-function plotInputAddressesV2() {
+function plotInputAddressesV2(redirect) {
     var addresses = getAddressesFromSelectV2();
-    addresses.forEach(plotAddressV2);
+    if(addresses){
+        for(i = addresses.length + 1; i >= 0; i--) {
+            let address = addresses[i];
+            if(address) {
+                //console.log(address + ' ' + i);
+                plotAddressV2(address, redirect, i);
+            }
+        }
+    }
+    //addresses.forEach(plotAddressV2);
     //console.log(addresses);
 }
 
-function plotAddressV2(address) {
-    let status = geocoding(address, plotCoordinates);
+function plotAddressV2(address, redirect, total) {
+    let status = geocoding(address, redirect, total, plotCoordinates);
     if(status == ResponseStatus.ERROR) {
         resetV2();
         setStatus(Status.INVALID_INPUT);
@@ -127,7 +136,7 @@ function plotAddressV2(address) {
     }
 }
 
-function plotCoordinates(location) {
+function plotCoordinates(location, redirect, total) {
     //console.log(location);
     let marker = new google.maps.Marker({
         map: map,
@@ -136,8 +145,17 @@ function plotCoordinates(location) {
             url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
         }
     });
-    marker.setVisible(false);
-    markers.push(marker);
+    
+    //console.log('total => ' + total);
+    if(total >= 0) {
+        marker.setVisible(false);
+        markers.push(marker);
+        console.log('total => ' + total + 'redirect => ' + redirect);
+    }
+    if(total <= 0 && redirect == true) {
+        search();
+        showMarkers();
+    }
 }
 
 function search() {
@@ -146,9 +164,18 @@ function search() {
     }
     if(centralpointMarker) {
         centralpointMarker.setMap(null);
+        centralpointMarker = null;
     }
 
     initPlacesListV2();
+    showMarkers();
+
+
+    //let total = document.getElementById(addressesSelectId).length;
+    // if(total <= 1) {
+
+    // }
+
     let location = plotCentralLocation();
     setStatus(Status.CENTRALPOINT_CALCULATED);
     getCentralLocationOutput(location);
@@ -157,7 +184,6 @@ function search() {
     nearbySearch(location, radius, filters);
     map.setCenter(new google.maps.LatLng(location[0], location[1]));
     map.setZoom(12);
-    showMarkers();
 }
 
 function getPoiFiltersV2() {
@@ -187,11 +213,23 @@ function getCentralLocationOutput(location) {
 }
 
 function plotCentralLocation() {
-    let positions = collectPositions();
-    let location = calculateCentralPointV2(positions);
+    let location = [];
+    let position;
+    let total = document.getElementById(addressesSelectId).length;
+    console.log('total || ' + total);
+    if(total <= 1) {
+        position = markers[0].position;
+        console.log(position.lat());
+        location.push(position.lat());
+        location.push(position.lng())
+    } else {
+        let positions = collectPositions();
+        location = calculateCentralPointV2(positions);
+        position = new google.maps.LatLng(location[0], location[1]);
+    }
     let marker = new google.maps.Marker({
         map: map,
-        position: new google.maps.LatLng(location[0], location[1]),
+        position: position,
         icon: {
             url: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
         }
@@ -201,20 +239,23 @@ function plotCentralLocation() {
 }
 
 function deleteAddressV2() {
+    // alert('Test!');
+    deleteSelectOption(addressesSelectId);
     clearMarkers(markers);
     clearMarkers(nearbyPlaceMarkers);
-    centralpointMarker.setMap(null);
-    deleteSelectOption(addressesSelectId);
-    plotInputAddressesV2();
-    initMap();
+    if(centralpointMarker) {
+         centralpointMarker.setMap(null);
+    }
+    plotInputAddressesV2(true);
+   // initMap();
     setStatus(Status.DELETE_ADDRESS);
 }
 
-function clearMarkers(markers) {
-    for (var i = 0; i < markers.length; i++) {
-      markers[i].setMap(null);
+function clearMarkers(givenMarkers) {
+    for (var i = 0; i < givenMarkers.length; i++) {
+        givenMarkers[i].setMap(null);
     }
-    markers = [];
+    givenMarkers = [];
 }
 
 /**
@@ -239,6 +280,7 @@ function generateInputMultipleSelectV2() {
     addresses = fillSelectWithOptionArrayV2(addresses, options);
     $('#excel_table').html(addresses);
     toggleElementsV2('pastein', addressesSelectId);
+    disableDeleteButtonValidation();
 }
 
 function getAddressesFromInputV2() {
@@ -331,10 +373,7 @@ function toggleElementsV2(elementIdDefaultShow, elementIdDefaultHidden) {
 function deleteSelectOption(selectId) {
     var givenSelect = document.getElementById(selectId);
     if(givenSelect) {
-        let index = givenSelect.selectedIndex;
-        if(index) {
-            givenSelect.remove(givenSelect.selectedIndex);
-        }
+         givenSelect.remove(givenSelect.selectedIndex);
     }
 }
 
@@ -439,6 +478,8 @@ function disableDeleteButtonValidation() {
         if(addresses.length <= 1) {
             $(".popover").popover('hide');
             toggleStatusElementV2(deleteButtonId, false);
+        } else {
+            toggleStatusElementV2(deleteButtonId, true);
         }
     }
 }
@@ -611,7 +652,7 @@ function getCurrentYear(id) {
 
 function test2() {
     // test geocoding
-    var result = geocoding('The Netherlands', function(location, responseStatus) {
+    var result = geocoding('The Netherlands', function(location, responseStatus, total) {
         console.info(`coordinates: lat = ${location.lat}, lng = ${location.lng}, status = ${responseStatus}`);
     });
 

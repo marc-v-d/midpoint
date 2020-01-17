@@ -341,17 +341,6 @@ function generateInputMultipleSelect() {
   addresses = fillSelectWithOptionArray(addresses, options);
   $('#excel_table').html(addresses);
   toggleElements('pastein', 'addressesSelect');
-  //plotAddresses();
-
-  // if(valideValueCheck() == false) {
-  //   toggleStatusElement('deleteButton', false);
-  //   toggleStatusElement('searchButton', false);
-  //   reset();
-  // } else {
-  //   toggleStatusElement('deleteButton', true);
-  //   toggleStatusElement('searchButton', true);
-    
-  // }
 }
 
 /**
