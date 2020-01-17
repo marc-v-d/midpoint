@@ -1,0 +1,18 @@
+$bg-color: lightblue; 
+
+body {
+    background: $bg-color;
+}
+
+#map {
+    //min-height: 450px;
+    height: 100%;
+}
+
+#poi_places {
+    overflow: scroll;
+    overflow-x: hidden; 
+    overflow-x: auto; 
+	height: 200px;
+	border: 1px solid #ced4da;;
+}
