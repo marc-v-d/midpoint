@@ -1,10 +1,227 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>My webpage!</title>
-  </head>
-  <body>
-    <h1>Hello, World!</h1>
-    <h4 id='date'></h4>
-  </body>
+<html class="no-js" lang="en">
+    <head> 
+        <title>Midpoint</title>
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link rel="shortcut icon" type="image/x-icon" href="assest/favicon.ico"/>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway:400,800">
+        <link rel='stylesheet' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="./css/bootstrap.css">
+        <link rel="stylesheet" href="./css/styles.css">
+
+        <script src="./js/scripts.js"></script>
+        <script src="./js/scripts-version2.js"></script>
+        <script src="./js/jquery.min.js"></script>
+        
+        <script>
+            $(document).ready(function() {
+                init();
+            });
+        </script>
+    </head>
+    <body onload="getCurrentYear('copyright-year')">
+        <div class="container-fluid ">
+            <div class="row mt-1 mb-1">
+                <div class="col-sm-9">
+                    <div class="vh-100">
+                        <div class="card h-100">
+                            <div class="card-body">
+                              <div class="h-100">
+                                <div id="map"></div>
+                              </div>
+                            </div>
+                            <div class="card-footer">
+                              <span>Midpoint | <a href="/assest/manual.pdf" target="_blank">User manual</a> | powered by Bergler&#169;</span><span id="copyright-year"></span>
+                            </div>
+                          </div>
+                    </div>
+                  
+                </div>
+                <div class="col-sm-3">
+                    <ul class="nav nav-tabs">
+                        <li class="nav-item">
+                            <a href="#input" class="nav-link active" role="tab" data-toggle="tab">
+                                Input
+                            </a>
+                        </li>
+        
+                        <li class="nav-item">
+                            <a href="#output" class="nav-link" role="tab" data-toggle="tab">
+                                Output
+                            </a>
+                        </li>                        
+                    </ul>
+                    <div class="tab-content">
+                        <div role="tabpanel" class="tab-pane active" id="input">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="mt-2">
+                                        <strong>Input:</strong>
+                                        <textarea id="pastein" onkeyup="isKeyDown(event);" name="excel_data" class="form-control rounded-0" rows="8" placeholder="Copy locations from MS Excel column. Press Ctrl + v to paste your locations here..." data-toggle="popover" title="Input" data-placement="left" data-content="Enter two addresses minimum. Only paste valid addresses. Each address must be on a new line." data-trigger="hover"></textarea>
+                                        <div id="excel_table"></div>
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <strong>Midpoint POI radius in meters:</strong>
+                                        <p>
+                                            <input id="txtRadius" class="form-control rounded-0" min="0" max="350000" value="2000" onkeypress="return event.charCode >= 48 && event.charCode <= 57" type="number" data-placement="left" title="Radius" data-toggle="popover" data-content="Only enter a number to search for POI inside midpoint radius." data-trigger="hover" />
+                                        </p>
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <strong>Midpoint POI filter:</strong>
+                                        <p>
+                                            <select id="poiFilterSelect" class="form-control rounded-0" data-placement="left" title="Filter" data-toggle="popover" data-content="Select a POI search filter option." data-trigger="hover">
+                                                <option value='all'>All</option>
+                                                <option value='accounting'>Accounting</option>
+                                                <option value='airport'>Airport</option>
+                                                <option value='amusement_park'>Amusement park</option>
+                                                <option value='aquarium'>Aquarium</option>
+                                                <option value='art_gallery'>Art gallery</option>
+                                                <option value='atm'>ATM</option>
+                                                <option value='bakery'>Bakery</option>
+                                                <option value='bank'>Bank</option>
+                                                <option value='bar'>Bar</option>
+                                                <option value='beauty_salon'>Beauty salon</option>
+                                                <option value='bicycle_store'>Bicycle store</option>
+                                                <option value='book_store'>Book store</option>
+                                                <option value='bowling_alley'>Bowling alley</option>
+                                                <option value='bus_station'>Bus station</option>
+                                                <option value='cafe'>Cafe</option>
+                                                <option value='campground'>Campground</option>
+                                                <option value='car_dealer'>Car dealer</option>
+                                                <option value='car_rental'>Car rental</option>
+                                                <option value='car_repair'>Car repair</option>
+                                                <option value='car_wash'>Car wash</option>
+                                                <option value='casino'>Casino</option>
+                                                <option value='cemetery'>Cemetery</option>
+                                                <option value='church'>Church</option>
+                                                <option value='city_hall'>City hall</option>
+                                                <option value='clothing_store'>Clothing store</option>
+                                                <option value='convenience_store'>Convenience store</option>
+                                                <option value='courthouse'>Courthouse</option>
+                                                <option value='dentist'>Dentist</option>
+                                                <option value='department_store'>Department store</option>
+                                                <option value='doctor'>Doctor</option>
+                                                <option value='drugstore'>Drugstore</option>
+                                                <option value='electrician'>Electrician</option>
+                                                <option value='electronics_store'>Electronics store</option>
+                                                <option value='embassy'>Embassy</option>
+                                                <option value='fire_station'>Fire station</option>
+                                                <option value='florist'>Florist</option>
+                                                <option value='funeral_home'>Funeral home</option>
+                                                <option value='furniture_store'>Furniture store</option>
+                                                <option value='gas_station'>Gas station</option>
+                                                <option value='grocery_or_supermarket'>Grocery or supermarket</option>
+                                                <option value='gym'>Gym</option>
+                                                <option value='hair_care'>Hair care</option>
+                                                <option value='hardware_store'>Hardware store</option>
+                                                <option value='hindu_temple'>Hindu temple</option>
+                                                <option value='home_goods_store'>Home goods store</option>
+                                                <option value='hospital'>Hospital</option>
+                                                <option value='insurance_agency'>Insurance_agency</option>
+                                                <option value='jewelry_store'>Jewelry store</option>
+                                                <option value='laundry'>Laundry</option>
+                                                <option value='lawyer'>Lawyer</option>
+                                                <option value='library'>Library</option>
+                                                <option value='light_rail_station'>Light rail station</option>
+                                                <option value='liquor_store'>Liquor store</option>
+                                                <option value='local_government_office'>Local government office</option>
+                                                <option value='locksmith'>Locksmith</option>
+                                                <option value='lodging'>Lodging</option>
+                                                <option value='meal_delivery'>Meal delivery</option>
+                                                <option value='meal_takeaway'>Meal takeaway</option>
+                                                <option value='mosque'>Mosque</option>
+                                                <option value='movie_rental'>Movie rental</option>
+                                                <option value='movie_theater'>Movie theater</option>
+                                                <option value='moving_company'>Moving company</option>
+                                                <option value='museum'>Museum</option>
+                                                <option value='night_club'>Night club</option>
+                                                <option value='painter'>Painter</option>
+                                                <option value='park'>Park</option>
+                                                <option value='parking'>Parking</option>
+                                                <option value='pet_store'>Pet store</option>
+                                                <option value='pharmacy'>Pharmacy</option>
+                                                <option value='physiotherapist'>Physiotherapist</option>
+                                                <option value='plumber'>Plumber</option>
+                                                <option value='police'>Police</option>
+                                                <option value='post_office'>Post office</option>
+                                                <option value='primary_school'>Primary school</option>
+                                                <option value='real_estate_agency'>Real estate agency</option>
+                                                <option value='restaurant'>Restaurant</option>
+                                                <option value='roofing_contractor'>Roofing contractor</option>
+                                                <option value='rv_park'>Recreational vehicle park</option>
+                                                <option value='school'>School</option>
+                                                <option value='secondary_school'>Secondary school</option>
+                                                <option value='shoe_store'>Shoe store</option>
+                                                <option value='shopping_mall'>Shopping mall</option>
+                                                <option value='spa'>Spa</option>
+                                                <option value='stadium'>Stadium</option>
+                                                <option value='storage'>Storage</option>
+                                                <option value='store'>Store</option>
+                                                <option value='subway_station'>Subway station</option>
+                                                <option value='supermarket'>Supermarket</option>
+                                                <option value='synagogue'>Synagogue</option>
+                                                <option value='taxi_stand'>Taxi stand</option>
+                                                <option value='tourist_attraction'>Tourist attraction</option>
+                                                <option value='train_station'>Train station</option>
+                                                <option value='transit_station'>Transit station</option>
+                                                <option value='travel_agency'>Travel agency</option>
+                                                <option value='university'>University</option>
+                                                <option value='veterinary_care'>Veterinary care</option>
+                                                <option value='zoo'>Zoo</option>
+                                            </select>
+                                        </p>
+                                    </div>
+
+                                    <div class="btn-group d-flex mt-2" role="group" aria-label="Location controles">
+                                        <button id="deleteButton" type="btn btn-light w-100" class="btn btn-warning" onclick="deleteAddressV2();" data-placement="top" data-toggle="popover" title="Delete" data-content="First select an address to remove it from the list." data-trigger="hover">Delete</button>
+                                        <button id="resetButton" type="btn btn-light w-100" class="btn btn-danger" onclick="resetV2();" data-placement="top" data-toggle="popover" title="Reset" data-content="Removes the input and output and sets it to the default values." data-trigger="hover">Reset</button>
+                                    </div>
+
+                                    <button id="searchButton" class="btn btn-success w-100 mt-2" onclick="search();" data-placement="top" data-toggle="popover" title="Search midpoint" data-content="Executes the midpoint searching function." data-trigger="hover">Search midpoint</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="output">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="mt-2">
+                                        <strong>Midpoint coordinates:</strong>
+                                        <p id="midpointCoordinates"></p>
+                                    </div>
+                                    <div class="mt-2">
+                                        <strong>Nearest midpoint address:</strong>
+                                        <p id="midpointAddress"></p>
+                                    </div>
+                                    <div class="mt-2">
+                                        <strong>Midpoint POI places:</strong>
+                                        <div id="poi_places" class="form-control rounded-0"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mt-2">
+                            <div class="card-body">
+                                <div class="mt-2">
+                                    <strong>Status message:</strong>
+                                    <p id="statusMessage"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script src="/js/popper.min.js"></script>
+        <script src="/js/bootstrap.min.js"></script>
+        
+    
+        <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBdLsVRrzPRAwRCiTSQtG0L1S3Z1bnnB-Y&libraries=places&callback=initMap">
+        </script>
+    </body>
 </html>
