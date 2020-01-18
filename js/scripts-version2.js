@@ -1,4 +1,3 @@
-const key = 'AIzaSyBdLsVRrzPRAwRCiTSQtG0L1S3Z1bnnB-Y';
 const defaultMapLocation = 'The Netherlands';
 const mapId = 'map';
 const statusMessageId = 'statusMessage';
@@ -17,6 +16,7 @@ var placesService;
 var markers = [];
 var nearbyPlaceMarkers = [];
 var centralpointMarker;
+var appendMessage = false;
 
 const Status = {
     INPUT_READY: 1,
@@ -49,6 +49,7 @@ function initControls() {
             $('#pastein').off('input');
         })
     });
+    setStatus(Status.INPUT_READY);
 }
 
 function initMap() {
@@ -145,17 +146,20 @@ function plotCoordinates(location, redirect, total) {
             url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
         }
     });
+    marker.setVisible(false);
     
     //console.log('total => ' + total);
-    if(total >= 0) {
-        marker.setVisible(false);
+    if(total > 0) {
         markers.push(marker);
-        console.log('total => ' + total + 'redirect => ' + redirect);
-    }
-    if(total <= 0 && redirect == true) {
+        
+       // console.log('total => ' + total + 'redirect => ' + redirect);total <= 0 &&
+    } 
+    if(total == 0 && redirect === true) {
+        marker.setVisible(true);
+        markers.push(marker);
         search();
-        showMarkers();
     }
+
 }
 
 function search() {
@@ -168,14 +172,6 @@ function search() {
     }
 
     initPlacesListV2();
-    showMarkers();
-
-
-    //let total = document.getElementById(addressesSelectId).length;
-    // if(total <= 1) {
-
-    // }
-
     let location = plotCentralLocation();
     setStatus(Status.CENTRALPOINT_CALCULATED);
     getCentralLocationOutput(location);
@@ -184,6 +180,7 @@ function search() {
     nearbySearch(location, radius, filters);
     map.setCenter(new google.maps.LatLng(location[0], location[1]));
     map.setZoom(12);
+    showMarkers();
 }
 
 function getPoiFiltersV2() {
@@ -216,7 +213,7 @@ function plotCentralLocation() {
     let location = [];
     let position;
     let total = document.getElementById(addressesSelectId).length;
-    console.log('total || ' + total);
+    console.log('total || ' + total + ' ' + markers.length);
     if(total <= 1) {
         position = markers[0].position;
         console.log(position.lat());
@@ -241,8 +238,8 @@ function plotCentralLocation() {
 function deleteAddressV2() {
     // alert('Test!');
     deleteSelectOption(addressesSelectId);
-    clearMarkers(markers);
-    clearMarkers(nearbyPlaceMarkers);
+    markers = clearMarkers(markers);
+    nearbyPlaceMarkers = clearMarkers(nearbyPlaceMarkers);
     if(centralpointMarker) {
          centralpointMarker.setMap(null);
     }
@@ -256,6 +253,7 @@ function clearMarkers(givenMarkers) {
         givenMarkers[i].setMap(null);
     }
     givenMarkers = [];
+    return givenMarkers;
 }
 
 /**
@@ -448,6 +446,7 @@ function setStatus(status) {
             toggleStatusElementV2(deleteButtonId, false);
             toggleStatusElementV2(resetButtonId, true);
             toggleStatusElement(searchButtonId, false);
+            appendMessage = false;
             break;
         case Status.SEARCH_READY:
             message = 'Input is valid';
@@ -464,12 +463,28 @@ function setStatus(status) {
             break;
         case Status.DELETE_ADDRESS:
             $(".popover").popover('hide');
-            message = 'Address is removed and input is valid to recalculate the midpoint';
+            appendMessage = true;
             toggleStatusElement(searchButtonId, true);
             break;
+        }
+        disableDeleteButtonValidation();
+        if(appendMessage === true) {
+            let deleteMessage = 'Address is removed and input is valid to recalculate the midpoint';
+            let breakline = document.createElement('br');
+            let text1 = document.getElementById(statusMessageId);
+            let text2 = document.createTextNode(message);
+            document.getElementById(statusMessageId).innerText = deleteMessage;
+            text1.appendChild(breakline);
+            text1.appendChild(text2);
+        }
+        else {
+            let text1 = document.createTextNode(message);
+            document.getElementById(statusMessageId).innerText = message;
+        }
+
+    if(status === Status.SEARCH_READY || status === Status.INPUT_READY) {
+        appendMessage = false;
     }
-    disableDeleteButtonValidation();
-    document.getElementById(statusMessageId).innerText = message;
 }
 
 function disableDeleteButtonValidation() {
@@ -651,6 +666,8 @@ function getCurrentYear(id) {
   }
 
 function test2() {
+    setStatus(Status.INPUT_READY);
+    setStatus(Status.DELETE_ADDRESS);
     // test geocoding
     var result = geocoding('The Netherlands', function(location, responseStatus, total) {
         console.info(`coordinates: lat = ${location.lat}, lng = ${location.lng}, status = ${responseStatus}`);
