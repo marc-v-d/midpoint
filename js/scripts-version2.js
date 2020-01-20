@@ -58,11 +58,14 @@ function initMap() {
     geocoding(defaultMapLocation, 1, resetMap, false);
 }
 
-function initMapDone(status, deleted) {
+function initMapDone(status, deleted, invalid) {
     initMap();
     if(status) {
         console.log('Test 1 ' + status);
         setStatus(status, deleted);
+    } else if (containsError === true) {
+        console.log('Test 3 ' + invalid);
+        setStatus(Status.INVALID_INPUT, deleted);
     } else {
         console.log('Test 2' + status);
         setStatus(Status.INPUT_READY, deleted);
@@ -88,7 +91,7 @@ function geocoding(address, total, location, deleted) {
         } else {
             console.warn('Error executing geocoding with Google Maps API.');
             location(null, null, false, deleted);
-            resetV2(Status.CONNECTION_ERROR, deleted);
+            resetV2(Status.CONNECTION_ERROR, deleted, false);
             containsError = true;
         }
     })
@@ -114,7 +117,7 @@ function ReverseGeocoding(latitude, longtitude, output) {
 function resetMap(location, total, result, deleted) {
     if(result == false) {
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT, deleted);
+        resetV2(Status.INVALID_INPUT, deleted, true);
         return;
     } else {
         setStatus(Status.INPUT_READY, deleted);
@@ -151,9 +154,9 @@ function plotInputAddressesV2(deleted) {
     if(containsError == true) {
         // containsError = 
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT, deleted);
+        resetV2(Status.INVALID_INPUT, deleted, true);
     }
-    containsError = false;
+    //containsError = false;
     
     //addresses.forEach(plotAddressV2);
     //console.log(addresses);
@@ -168,21 +171,21 @@ function plotCoordinates(location, total, result, deleted) {
 //    // containsError = 
     if(result == false) {
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT, deleted);
-        return;
+        resetV2(Status.INVALID_INPUT, deleted, true);
+    } else if(containsError == false) {
+        setStatus(Status.SEARCH_READY, deleted);
+        console.log('>>> SEARCHED ' + markers.length + ' ' + location.lng + ' ' + total + ' ' + result)
+    
+        let marker = new google.maps.Marker({
+            map: map,
+            position: location,
+            icon: {
+                url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+            }
+        });
+        marker.setVisible(true);
+        markers.push(marker);
     }
-    setStatus(Status.SEARCH_READY, deleted);
-    console.log('>>> SEARCHED ' + markers.length + ' ' + location.lng + ' ' + total + ' ' + result)
-
-    let marker = new google.maps.Marker({
-        map: map,
-        position: location,
-        icon: {
-            url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-        }
-    });
-    marker.setVisible(true);
-    markers.push(marker);
 }
 
 function search() {
@@ -522,11 +525,12 @@ function disableDeleteButtonValidation() {
     }
 }
 
-function resetV2(status, deleted) {
+function resetV2(status, deleted, invalid) {
+    console.log('RESET!!!');
     if(status) {
         markers = [];
         initControls();
-        initMapDone(status, deleted)
+        initMapDone(status, deleted, containsError);
         // empty address select element
         var addressSelectElement = document.getElementById(addressesSelectId);
         if(addressSelectElement) {
