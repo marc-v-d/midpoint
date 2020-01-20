@@ -122,6 +122,7 @@ function resetMap(location, total, result, deleted) {
         //resetV2(Status.INVALID_INPUT, deleted, true);
     } else {
         setStatus(Status.INPUT_READY, deleted);
+        toggleStatusElementV2(deleteButtonId, false);
     }
 
     let options = {
