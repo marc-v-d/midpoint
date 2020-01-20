@@ -16,7 +16,7 @@ var placesService;
 var markers = [];
 var nearbyPlaceMarkers = [];
 var centralpointMarker;
-var appendMessage = false;
+var containsError = false;
 
 const Status = {
     INPUT_READY: 1,
@@ -38,7 +38,7 @@ const ResponseStatus = {
 function init() {
     initControls();
     initOutput();
-    setStatus(Status.INPUT_READY);
+    setStatus(Status.INPUT_READY, false);
 }
 
 function initControls() {
@@ -46,7 +46,7 @@ function initControls() {
     $('#pastein').on('paste', function(event) {
         $('#pastein').on('input', function() {
             generateInputMultipleSelectV2();
-            plotInputAddressesV2(false);
+            plotInputAddressesV2();
             $('#pastein').off('input');
         });
     });
@@ -55,17 +55,17 @@ function initControls() {
 }
 
 function initMap() {
-    geocoding(defaultMapLocation, false, 1, resetMap);
+    geocoding(defaultMapLocation, 1, resetMap, false);
 }
 
-function initMapDone(status) {
+function initMapDone(status, deleted) {
     initMap();
     if(status) {
         console.log('Test 1 ' + status);
-        setStatus(status);
+        setStatus(status, deleted);
     } else {
         console.log('Test 2' + status);
-        setStatus(Status.INPUT_READY);
+        setStatus(Status.INPUT_READY, deleted);
     }
 }
 
@@ -74,19 +74,22 @@ function initMapDone(status) {
  * @param {string} address The address to get the coordinates from.  
  * @param {function} location The given function gets executed after executing the request and getting the response back from Google Maps.
  */
-function geocoding(address, redirect, total, location) {
-    setStatus(Status.ANALYZE);
+function geocoding(address, total, location, deleted) {
+    console.log('Address to search: ' + address);
+    setStatus(Status.ANALYZE, deleted);
     let url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&key=${key}`;
     fetch(url)
     .then(response => response.json())
     .then(data => {
+        console.log('Repley ' + data.status);
         if(data.status == "OK") {
             console.log('location: ' + data.results[0].geometry.location.lat);
-            location(data.results[0].geometry.location, redirect, total, true);
+            location(data.results[0].geometry.location, total, true, deleted);
         } else {
             console.warn('Error executing geocoding with Google Maps API.');
-            location(null, null, null, false);
-            resetV2(Status.CONNECTION_ERROR);
+            location(null, null, false, deleted);
+            resetV2(Status.CONNECTION_ERROR, deleted);
+            containsError = true;
         }
     })
     .catch(err => console.warn(err.message));
@@ -108,13 +111,13 @@ function ReverseGeocoding(latitude, longtitude, output) {
 /**
  * This function brings the map back to the default values
  */
-function resetMap(location, redirect, total, result) {
+function resetMap(location, total, result, deleted) {
     if(result == false) {
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT);
+        resetV2(Status.INVALID_INPUT, deleted);
         return;
     } else {
-        setStatus(Status.INPUT_READY);
+        setStatus(Status.INPUT_READY, deleted);
     }
 
     let options = {
@@ -129,35 +132,47 @@ function resetMap(location, redirect, total, result) {
 /**
  * Plot the addresses from the input.
  */
-function plotInputAddressesV2(redirect) {
-    let result = true;
+function plotInputAddressesV2(deleted) {
+    containsError = false;
     var addresses = getAddressesFromSelectV2();
     if(addresses){
         for(i = addresses.length + 1; i >= 0; i--) {
             let address = addresses[i];
             if(address) {
-                //console.log(address + ' ' + i);
-                plotAddressV2(address, redirect, i);
+                // console.log(address + ' ' + i);
+                if(containsError == true) {
+                    break;
+                } else {
+                    plotAddressV2(address, i, deleted);
+                }
             }
         }
     }
+    if(containsError == true) {
+        // containsError = 
+        console.log('invalid input');
+        resetV2(Status.INVALID_INPUT, deleted);
+    }
+    containsError = false;
     
     //addresses.forEach(plotAddressV2);
     //console.log(addresses);
 }
 
-function plotAddressV2(address, redirect, total) {
-    geocoding(address, redirect, total, plotCoordinates);
+function plotAddressV2(address, total, deleted) {
+    geocoding(address, total, plotCoordinates, deleted);
+    console.log('Searched address: ' + address);
 }
 
-function plotCoordinates(location, redirect, total, result) {
+function plotCoordinates(location, total, result, deleted) {
+//    // containsError = 
     if(result == false) {
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT);
+        resetV2(Status.INVALID_INPUT, deleted);
         return;
     }
-    setStatus(Status.SEARCH_READY);
-    console.log('>>>' + location.lng + ' ' + redirect + ' ' + total + ' ' + result)
+    setStatus(Status.SEARCH_READY, deleted);
+    console.log('>>> SEARCHED ' + markers.length + ' ' + location.lng + ' ' + total + ' ' + result)
 
     let marker = new google.maps.Marker({
         map: map,
@@ -167,22 +182,7 @@ function plotCoordinates(location, redirect, total, result) {
         }
     });
     marker.setVisible(true);
-    
-    //console.log('total => ' + total);
-    if(total > 0 && redirect === true) {
-        markers.push(marker);
-       // console.log('total => ' + total + 'redirect => ' + redirect);total <= 0 &&
-    }
-    if (redirect === false) {
-        markers.push(marker);
-        // console.log('TEST!!! => ' + markers.length);
-    }
-    if(total == 0 && redirect === true) {
-        marker.setVisible(true);
-        markers.push(marker);
-        console.log('total => ' +  total + ' ' + markers.length);
-        search();
-    }
+    markers.push(marker);
 }
 
 function search() {
@@ -193,11 +193,14 @@ function search() {
         centralpointMarker.setMap(null);
         centralpointMarker = null;
     }
+    if(markers.length == 1) {
+        plotInputAddressesV2();
+    }
 
     initPlacesListV2();
     let location = plotCentralLocation();
     showMarkers();
-    setStatus(Status.CENTRALPOINT_CALCULATED);
+    setStatus(Status.CENTRALPOINT_CALCULATED, false);
     getCentralLocationOutput(location);
     let radius = getRadius();
     let filters = getPoiFiltersV2();
@@ -237,18 +240,19 @@ function plotCentralLocation() {
     let location = [];
     let position;
     let total = document.getElementById(addressesSelectId).length;
-    console.log('total || ' + total + ' ' + markers.length);
-    if(total < 1) {
-        position = markers[0].position;
-        console.log(position.lat());
-        location.push(position.lat());
-        location.push(position.lng())
-    } else {
 
+    if(total <= 1) {
+        console.log('Totaal aantal options: ' + total);
+        position = markers[0].position;
+        location.push(position.lat());
+        location.push(position.lng());
+        console.log('Position van 1 adres: ' + position.lat() + ' ' + position.lng());
+    } else {
+        console.log('Totaal aantal options meer dan 1: ' + total);
         let positions = collectPositions();
         location = calculateCentralPointV2(positions);
-        position = new google.maps.LatLng(location[0], location[1]);
     }
+    position = new google.maps.LatLng(location[0], location[1]);
     let marker = new google.maps.Marker({
         map: map,
         position: position,
@@ -270,7 +274,7 @@ function deleteAddressV2() {
     }
     plotInputAddressesV2(true);
    // initMap();
-    setStatus(Status.DELETE_ADDRESS);
+    //setStatus(Status.DELETE_ADDRESS);
 }
 
 function clearMarkers(givenMarkers) {
@@ -446,7 +450,7 @@ function showMarkers() {
     markers.forEach(x => x.setVisible(true));
 }
 
-function setStatus(status) {
+function setStatus(status, deleted) {
     let message = 'v';
     switch(status) {
         case Status.CONNECTION_ERROR:
@@ -472,7 +476,6 @@ function setStatus(status) {
             toggleStatusElementV2(deleteButtonId, false);
             toggleStatusElementV2(resetButtonId, true);
             toggleStatusElement(searchButtonId, false);
-            appendMessage = false;
             break;
         case Status.SEARCH_READY:
             message = 'Input is valid';
@@ -489,12 +492,11 @@ function setStatus(status) {
             break;
         case Status.DELETE_ADDRESS:
             $(".popover").popover('hide');
-            appendMessage = true;
             toggleStatusElement(searchButtonId, true);
             break;
         }
         disableDeleteButtonValidation();
-        if(appendMessage === true) {
+        if(deleted === true) {
             let deleteMessage = 'Address is removed and input is valid to recalculate the midpoint';
             let breakline = document.createElement('br');
             let text1 = document.getElementById(statusMessageId);
@@ -506,10 +508,6 @@ function setStatus(status) {
         else {
             document.getElementById(statusMessageId).innerText = message;
         }
-
-    if(status === Status.SEARCH_READY || status === Status.INPUT_READY) {
-        appendMessage = false;
-    }
 }
 
 function disableDeleteButtonValidation() {
@@ -524,11 +522,11 @@ function disableDeleteButtonValidation() {
     }
 }
 
-function resetV2(status) {
+function resetV2(status, deleted) {
     if(status) {
         markers = [];
         initControls();
-        initMapDone(status)
+        initMapDone(status, deleted)
         // empty address select element
         var addressSelectElement = document.getElementById(addressesSelectId);
         if(addressSelectElement) {
