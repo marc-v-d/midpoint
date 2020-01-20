@@ -22,9 +22,10 @@ const Status = {
     INPUT_READY: 1,
     ANALYZE: 2,
     INVALID_INPUT: 3,
-    VALID_INPUT: 4,
+    SEARCH_READY: 4,
     CENTRALPOINT_CALCULATED: 5,
-    DELETE_ADDRESS: 6
+    DELETE_ADDRESS: 6,
+    CONNECTION_ERROR: 7
   }
 const ResponseStatus = {
     OK: 1,
@@ -47,13 +48,25 @@ function initControls() {
             generateInputMultipleSelectV2();
             plotInputAddressesV2(false);
             $('#pastein').off('input');
-        })
+        });
     });
-    setStatus(Status.INPUT_READY);
+    //setStatus(Status.INPUT_READY);
+    //toggleStatusElementV2(searchButtonId, false);
 }
 
 function initMap() {
-    let status = geocoding(defaultMapLocation, false, 1, resetMap);
+    geocoding(defaultMapLocation, false, 1, resetMap);
+}
+
+function initMapDone(status) {
+    initMap();
+    if(status) {
+        console.log('Test 1 ' + status);
+        setStatus(status);
+    } else {
+        console.log('Test 2' + status);
+        setStatus(Status.INPUT_READY);
+    }
 }
 
 /**
@@ -68,15 +81,12 @@ function geocoding(address, redirect, total, location) {
     .then(response => response.json())
     .then(data => {
         if(data.status == "OK") {
-            //console.log(data.results[0].geometry.location);
-            location(data.results[0].geometry.location, redirect, total);
-            return ResponseStatus.OK;
+            console.log('location: ' + data.results[0].geometry.location.lat);
+            location(data.results[0].geometry.location, redirect, total, true);
         } else {
             console.warn('Error executing geocoding with Google Maps API.');
-            resetV2();
-            setStatus(Status.INVALID_INPUT);
-            location(new google.maps.LatLng(0, 0));
-            return ResponseStatus.ERROR;
+            location(null, null, null, false);
+            resetV2(Status.CONNECTION_ERROR);
         }
     })
     .catch(err => console.warn(err.message));
@@ -98,7 +108,15 @@ function ReverseGeocoding(latitude, longtitude, output) {
 /**
  * This function brings the map back to the default values
  */
-function resetMap(location, total) {
+function resetMap(location, redirect, total, result) {
+    if(result == false) {
+        console.log('invalid input');
+        resetV2(Status.INVALID_INPUT);
+        return;
+    } else {
+        setStatus(Status.INPUT_READY);
+    }
+
     let options = {
         zoom: zoom_default,
         center: location,
@@ -112,6 +130,7 @@ function resetMap(location, total) {
  * Plot the addresses from the input.
  */
 function plotInputAddressesV2(redirect) {
+    let result = true;
     var addresses = getAddressesFromSelectV2();
     if(addresses){
         for(i = addresses.length + 1; i >= 0; i--) {
@@ -122,23 +141,24 @@ function plotInputAddressesV2(redirect) {
             }
         }
     }
+    
     //addresses.forEach(plotAddressV2);
     //console.log(addresses);
 }
 
 function plotAddressV2(address, redirect, total) {
-    let status = geocoding(address, redirect, total, plotCoordinates);
-    if(status == ResponseStatus.ERROR) {
-        resetV2();
-        setStatus(Status.INVALID_INPUT);
-        return;
-    } else {
-        setStatus(Status.SEARCH_READY);
-    }
+    geocoding(address, redirect, total, plotCoordinates);
 }
 
-function plotCoordinates(location, redirect, total) {
-    //console.log(location);
+function plotCoordinates(location, redirect, total, result) {
+    if(result == false) {
+        console.log('invalid input');
+        resetV2(Status.INVALID_INPUT);
+        return;
+    }
+    setStatus(Status.SEARCH_READY);
+    console.log('>>>' + location.lng + ' ' + redirect + ' ' + total + ' ' + result)
+
     let marker = new google.maps.Marker({
         map: map,
         position: location,
@@ -146,20 +166,23 @@ function plotCoordinates(location, redirect, total) {
             url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
         }
     });
-    marker.setVisible(false);
+    marker.setVisible(true);
     
     //console.log('total => ' + total);
-    if(total > 0) {
+    if(total > 0 && redirect === true) {
         markers.push(marker);
-        
        // console.log('total => ' + total + 'redirect => ' + redirect);total <= 0 &&
-    } 
+    }
+    if (redirect === false) {
+        markers.push(marker);
+        // console.log('TEST!!! => ' + markers.length);
+    }
     if(total == 0 && redirect === true) {
         marker.setVisible(true);
         markers.push(marker);
+        console.log('total => ' +  total + ' ' + markers.length);
         search();
     }
-
 }
 
 function search() {
@@ -173,6 +196,7 @@ function search() {
 
     initPlacesListV2();
     let location = plotCentralLocation();
+    showMarkers();
     setStatus(Status.CENTRALPOINT_CALCULATED);
     getCentralLocationOutput(location);
     let radius = getRadius();
@@ -180,7 +204,7 @@ function search() {
     nearbySearch(location, radius, filters);
     map.setCenter(new google.maps.LatLng(location[0], location[1]));
     map.setZoom(12);
-    showMarkers();
+    
 }
 
 function getPoiFiltersV2() {
@@ -214,12 +238,13 @@ function plotCentralLocation() {
     let position;
     let total = document.getElementById(addressesSelectId).length;
     console.log('total || ' + total + ' ' + markers.length);
-    if(total <= 1) {
+    if(total < 1) {
         position = markers[0].position;
         console.log(position.lat());
         location.push(position.lat());
         location.push(position.lng())
     } else {
+
         let positions = collectPositions();
         location = calculateCentralPointV2(positions);
         position = new google.maps.LatLng(location[0], location[1]);
@@ -277,7 +302,8 @@ function generateInputMultipleSelectV2() {
     let options = convertStringArrayToOptionArrayV2(cells);
     addresses = fillSelectWithOptionArrayV2(addresses, options);
     $('#excel_table').html(addresses);
-    toggleElementsV2('pastein', addressesSelectId);
+    hideElement('pastein');
+    showElement(addressesSelectId);
     disableDeleteButtonValidation();
 }
 
@@ -351,17 +377,12 @@ function fillSelectWithOptionArrayV2(selectElement, optionArray) {
     }
 }
 
-function toggleElementsV2(elementIdDefaultShow, elementIdDefaultHidden) {
-    var elementDefaultShow = document.getElementById(elementIdDefaultShow);
-    var elementDefaultHidden = document.getElementById(elementIdDefaultHidden);
-  
-    if (elementDefaultShow.style.display === "none") {
-      elementDefaultShow.style.display = "block";
-      elementDefaultHidden.style.display = "none";
-    } else {
-      elementDefaultShow.style.display = "none";
-      elementDefaultHidden.style.display = "block";
-    }
+function hideElement(elementId) {
+    document.getElementById(elementId).style.display = "none";
+}
+
+function showElement(elementId) {
+    document.getElementById(elementId).style.display = "block";
 }
 
 /**
@@ -427,14 +448,20 @@ function showMarkers() {
 }
 
 function setStatus(status) {
-    let message = '';
+    let message = 'v';
     switch(status) {
+        case Status.CONNECTION_ERROR:
+            message = 'Error occured when connecting to the Google Maps API';
+            toggleStatusElementV2(deleteButtonId, false);
+            toggleStatusElementV2(resetButtonId, true);
+            toggleStatusElement(searchButtonId, false);
+            break;
         case Status.INPUT_READY:
             message = 'Ready for input';
             toggleStatusElementV2(deleteButtonId, false);
             toggleStatusElementV2(resetButtonId, true);
             toggleStatusElement(searchButtonId, false);
-          break;
+            break;
         case Status.ANALYZE:
             message = 'Analyzing input';
             toggleStatusElementV2(deleteButtonId, false);
@@ -478,7 +505,6 @@ function setStatus(status) {
             text1.appendChild(text2);
         }
         else {
-            let text1 = document.createTextNode(message);
             document.getElementById(statusMessageId).innerText = message;
         }
 
@@ -499,35 +525,39 @@ function disableDeleteButtonValidation() {
     }
 }
 
-function resetV2() {
-    markers = [];
-    initControls();
-    initMap();
-    // reset status message
-    setStatus(Status.INPUT_READY);
-    // empty address select element
-    var addressSelectElement = document.getElementById(addressesSelectId);
-    if(addressSelectElement) {
-        fillSelectWithOptionArrayV2(addressSelectElement, null);
+function resetV2(status) {
+    if(status) {
+        markers = [];
+        initControls();
+        initMapDone(status)
+        // empty address select element
+        var addressSelectElement = document.getElementById(addressesSelectId);
+        if(addressSelectElement) {
+            fillSelectWithOptionArrayV2(addressSelectElement, null);
+        }
+        // clear text area from input
+        var pasteArea = document.getElementById('pastein');
+        if(pasteArea) {
+            pasteArea.value = '';
+        }
+        // hide address select element and show the paste text area
+        if(addressSelectElement) {
+            hideElement(addressesSelectId);
+            showElement('pastein');
+        }
+        // reset midpoint POI radius input field
+        var radius = document.getElementById('txtRadius').value = 2000;
+        // make the "All" option the default
+        document.getElementById("poiFilterSelect").selectedIndex = 0;
+        // reset output
+        initOutput();
+        //reset element state
+        toggleStatusElement(resetButtonId, true);
+        // if(status) {
+        //     setStatus(status);
+        // }
+        console.log('Reset was triggered!');
     }
-    // clear text area from input
-    var pasteArea = document.getElementById('pastein');
-    if(pasteArea) {
-        pasteArea.value = '';
-    }
-    // hide address select element and show the paste text area
-    if(addressSelectElement) {
-        toggleElementsV2('pastein', addressesSelectId);
-    }
-    // reset midpoint POI radius input field
-    var pasteArea = document.getElementById('txtRadius').value = 2000;
-    // make the "All" option the default
-    document.getElementById("poiFilterSelect").selectedIndex = 0;
-    // reset output
-    initOutput();
-    //reset element state
-    toggleStatusElement(resetButtonId, true);
-    
 }
 
 function initOutput() {
@@ -666,12 +696,12 @@ function getCurrentYear(id) {
   }
 
 function test2() {
-    setStatus(Status.INPUT_READY);
-    setStatus(Status.DELETE_ADDRESS);
+    // setStatus(Status.INPUT_READY);
+    // setStatus(Status.DELETE_ADDRESS);
     // test geocoding
-    var result = geocoding('The Netherlands', function(location, responseStatus, total) {
-        console.info(`coordinates: lat = ${location.lat}, lng = ${location.lng}, status = ${responseStatus}`);
-    });
+    // geocoding('The Netherlands', function(location, responseStatus, total) {
+    //     console.info(`coordinates: lat = ${location.lat}, lng = ${location.lng}, status = ${responseStatus}`);
+    // });
 
     // var t = ['lol','op','lop','lol','i','op']
     // let w = removeDuplicates(t);
