@@ -342,7 +342,6 @@ function extractCellsFromRowsV2(rowArray)
 function createMultipleSelectV2(id) {
     var newSelect = document.createElement("select");
     newSelect.id = id;
-    newSelect.multiple = true;
     newSelect.className = 'form-control rounded-0';
     newSelect.size = 8;
     return newSelect;
