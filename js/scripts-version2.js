@@ -60,8 +60,8 @@ function initMap() {
 
 function initMapDone(status, deleted, invalid) {
     initMap();
-    if(status) {
-        console.log('Test 1 ' + status);
+    if(status && containsError === false) {
+        console.log('Test (1)) ' + status);
         setStatus(status, deleted);
     } else if (containsError === true) {
         console.log('Test 3 ' + invalid);
@@ -115,10 +115,11 @@ function ReverseGeocoding(latitude, longtitude, output) {
  * This function brings the map back to the default values
  */
 function resetMap(location, total, result, deleted) {
-    if(result == false) {
+    if(containsError == true) {
         console.log('invalid input');
-        resetV2(Status.INVALID_INPUT, deleted, true);
-        return;
+        setStatus(Status.INVALID_INPUT,deleted);
+        toggleStatusElementV2(deleteButtonId, false);
+        //resetV2(Status.INVALID_INPUT, deleted, true);
     } else {
         setStatus(Status.INPUT_READY, deleted);
     }
